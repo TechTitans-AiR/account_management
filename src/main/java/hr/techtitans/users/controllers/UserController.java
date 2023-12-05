@@ -51,6 +51,19 @@ public class UserController {
         }
     }
 
+    @PutMapping("/update/{userId}")
+    public ResponseEntity<Object> updateUser(@PathVariable String userId, @RequestBody Map<String, Object> payload) {
+        try {
+            ResponseEntity<Object> response = userService.updateUser(userId, payload);
+            return response;
+        } catch (UserService.UserCreationException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @DeleteMapping("/delete/{userId}")
     public ResponseEntity<Object> deleteUser(@PathVariable String userId) {
         return userService.deleteUserById(userId);

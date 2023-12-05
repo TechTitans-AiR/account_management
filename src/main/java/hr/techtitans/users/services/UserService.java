@@ -169,6 +169,58 @@ public class UserService {
         }
     }
 
+    public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload) {
+        try {
+            ObjectId objectId = new ObjectId(userId);
+            Optional<User> optionalUser = userRepository.findById(objectId);
+
+            if (optionalUser.isPresent()) {
+                User user = optionalUser.get();
+                LocalDateTime currentDateTime = LocalDateTime.now();
+
+                if (isValidField(payload, "username")) {
+                    user.setUsername((String) payload.get("username"));
+                }
+                if (isValidField(payload, "email")) {
+                    user.setEmail((String) payload.get("email"));
+                }
+                if (isValidField(payload, "password")) {
+                    user.setPassword(hashPassword((String) payload.get("password")));
+                }
+                if (isValidField(payload, "first_name")) {
+                    user.setFirst_name((String) payload.get("first_name"));
+                }
+                if (isValidField(payload, "last_name")) {
+                    user.setLast_name((String) payload.get("last_name"));
+                }
+                if (isValidField(payload, "address")) {
+                    user.setAddress((String) payload.get("address"));
+                }
+
+                if (isValidField(payload, "phone")) {
+                    user.setPhone((String) payload.get("phone"));
+                }
+                if (isValidField(payload, "date_of_birth")) {
+                    String dateOfBirthString = (String) payload.get("date_of_birth");
+                    LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
+                    user.setDate_of_birth(dateOfBirth);
+                }
+
+
+                user.setDate_modified(currentDateTime);
+
+                userRepository.save(user);
+
+                return new ResponseEntity<>("User updated successfully", HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     private boolean isValidField(Map<String, Object> payload, String field) {
         return payload.containsKey(field) && payload.get(field) != null && !payload.get(field).toString().isEmpty();
     }
