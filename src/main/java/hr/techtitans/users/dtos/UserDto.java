@@ -1,13 +1,20 @@
 package hr.techtitans.users.dtos;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import hr.techtitans.users.models.UserRole;
 import hr.techtitans.users.models.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import org.bson.types.ObjectId;
+
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,6 +34,7 @@ public class UserDto {
     @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
     private LocalDateTime date_modified;
 
-    private UserRole userRole;
-    private UserStatus userStatus;
+    private String userRole;
+
+    private String userStatus;
 }

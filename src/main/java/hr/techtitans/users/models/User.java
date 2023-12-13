@@ -58,6 +58,4 @@ public class User {
         return userStatusRepository.findById(userStatus).orElse(null);
     }
 
-
-
 }

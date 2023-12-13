@@ -1,6 +1,4 @@
 package hr.techtitans.users.services;
-
-
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import hr.techtitans.users.dtos.UserDto;
 import hr.techtitans.users.models.User;
@@ -16,7 +14,6 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +44,7 @@ public class UserService {
         this.jwtUtils = jwtUtils;
     }
 
+
     public class UserCreationException extends RuntimeException {
         public UserCreationException(String message) {
             super(message);
@@ -68,6 +66,9 @@ public class UserService {
     private UserDto mapToUserDto(User user){
         UserRole userRole = userRoleRepository.findById(user.getUserRole()).orElse(null);
         UserStatus userStatus = userStatusRepository.findById(user.getUserStatus()).orElse(null);
+
+        String userRoleId = userRole != null ? userRole.getId().toString() : null;
+        String userStatusId = userStatus != null ? userStatus.getId().toString() : null;
         return new UserDto(
                 user.getId(),
                 user.getUsername(),
@@ -80,8 +81,8 @@ public class UserService {
                 user.getDate_of_birth(),
                 user.getDate_created(),
                 user.getDate_modified(),
-                userRole,
-                userStatus
+                userRoleId,
+                userStatusId
         );
     }
 
@@ -171,47 +172,66 @@ public class UserService {
 
     public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload) {
         try {
+
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
 
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
-                LocalDateTime currentDateTime = LocalDateTime.now();
 
-                if (isValidField(payload, "username")) {
-                    user.setUsername((String) payload.get("username"));
-                }
-                if (isValidField(payload, "email")) {
-                    user.setEmail((String) payload.get("email"));
-                }
-                if (isValidField(payload, "password")) {
-                    user.setPassword(hashPassword((String) payload.get("password")));
-                }
-                if (isValidField(payload, "first_name")) {
-                    user.setFirst_name((String) payload.get("first_name"));
-                }
-                if (isValidField(payload, "last_name")) {
-                    user.setLast_name((String) payload.get("last_name"));
-                }
-                if (isValidField(payload, "address")) {
-                    user.setAddress((String) payload.get("address"));
+
+                    LocalDateTime currentDateTime = LocalDateTime.now();
+
+                    if (isValidField(payload, "username")) {
+                        user.setUsername((String) payload.get("username"));
+                    }
+                    if (isValidField(payload, "email")) {
+                        user.setEmail((String) payload.get("email"));
+                    }
+                    if (isValidField(payload, "password")) {
+                        user.setPassword(hashPassword((String) payload.get("password")));
+                    }
+                    if (isValidField(payload, "first_name")) {
+                        user.setFirst_name((String) payload.get("first_name"));
+                    }
+                    if (isValidField(payload, "last_name")) {
+                        user.setLast_name((String) payload.get("last_name"));
+                    }
+                    if (isValidField(payload, "address")) {
+                        user.setAddress((String) payload.get("address"));
+                    }
+
+                    if (isValidField(payload, "phone")) {
+                        user.setPhone((String) payload.get("phone"));
+                    }
+                    if (isValidField(payload, "date_of_birth")) {
+                        String dateOfBirthString = (String) payload.get("date_of_birth");
+                        LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
+                        user.setDate_of_birth(dateOfBirth);
+                    }
+                if (payload.containsKey("user_status")) {
+                    String userStatusId = (String) payload.get("user_status");
+                    ObjectId userStatusObjectId = new ObjectId(userStatusId);
+                    user.setUserStatus(userStatusObjectId);
                 }
 
-                if (isValidField(payload, "phone")) {
-                    user.setPhone((String) payload.get("phone"));
+                if (payload.containsKey("user_role")) {
+                    String userRoleId = (String) payload.get("user_role");
+                    ObjectId userRoleObjectId = new ObjectId(userRoleId);
+                    user.setUserRole(userRoleObjectId);
                 }
-                if (isValidField(payload, "date_of_birth")) {
-                    String dateOfBirthString = (String) payload.get("date_of_birth");
-                    LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
-                    user.setDate_of_birth(dateOfBirth);
-                }
+
 
 
                 user.setDate_modified(currentDateTime);
+                    user.setDate_created(user.getDate_created());
 
-                userRepository.save(user);
 
-                return new ResponseEntity<>("User updated successfully", HttpStatus.OK);
+
+                    userRepository.save(user);
+
+                    return new ResponseEntity<>("User updated successfully", HttpStatus.OK);
+
             } else {
                 return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
             }
@@ -220,6 +240,8 @@ public class UserService {
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
 
     private boolean isValidField(Map<String, Object> payload, String field) {
         return payload.containsKey(field) && payload.get(field) != null && !payload.get(field).toString().isEmpty();
