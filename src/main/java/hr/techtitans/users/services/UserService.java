@@ -67,8 +67,7 @@ public class UserService {
         UserRole userRole = userRoleRepository.findById(user.getUserRole()).orElse(null);
         UserStatus userStatus = userStatusRepository.findById(user.getUserStatus()).orElse(null);
 
-        String userRoleId = userRole != null ? userRole.getId().toString() : null;
-        String userStatusId = userStatus != null ? userStatus.getId().toString() : null;
+
         return new UserDto(
                 user.getId(),
                 user.getUsername(),
@@ -81,8 +80,8 @@ public class UserService {
                 user.getDate_of_birth(),
                 user.getDate_created(),
                 user.getDate_modified(),
-                userRoleId,
-                userStatusId
+                userRole,
+                userStatus
         );
     }
 
