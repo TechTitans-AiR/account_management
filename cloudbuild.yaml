@@ -1,11 +1,19 @@
 steps:
+  # Gradnja Docker slike
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
-      - '--build-arg=MONGO_DATABASE=$_MONGODB'
-      - '--build-arg=MONGO_USER=$_MONGO_USER'
-      - '--build-arg=MONGO_PASSWORD=$_MONGO_PASSWORD'
-      - '--build-arg=MONGO_CLUSTER=$_MONGO_CLUSTER'
+      - '--build-arg=_MONGO_CLUSTER=$_MONGO_CLUSTER'
+      - '--build-arg=_MONGO_PASSWORD=$_MONGO_PASSWORD'
+      - '--build-arg=_MONGODB=$_MONGODB'
+      - '--build-arg=_MONGOUSER=$_MONGOUSER'
       - '-t'
       - 'gcr.io/techtitans-407214/account_management'
       - '.'
+
+  # Postavljanje slike na Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/techtitans-407214/account_management']
+
+images:
+  - 'gcr.io/techtitans-407214/account_management'
