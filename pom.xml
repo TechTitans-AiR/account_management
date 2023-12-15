@@ -60,6 +60,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>account_management</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
@@ -76,6 +77,7 @@
 					</excludes>
 				</configuration>
 			</plugin>
+
 		</plugins>
 	</build>
 
