@@ -10,7 +10,6 @@ import hr.techtitans.users.repositories.UserStatusRepository;
 import hr.techtitans.users.utils.JWT;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -20,9 +19,6 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.Date;
-import java.util.Map;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 @Service
@@ -96,7 +92,6 @@ public class UserService {
             return null;
         }
     }
-
 
     public ResponseEntity<Object> addUser(Map<String,Object> payload) {
         try {
@@ -199,11 +194,14 @@ public class UserService {
                 if (isValidField(payload, "phone")) {
                     user.setPhone((String) payload.get("phone"));
                 }
+
                 if (isValidField(payload, "date_of_birth")) {
                     String dateOfBirthString = (String) payload.get("date_of_birth");
-                    LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
+                    DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+                    LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString, inputFormatter);
                     user.setDate_of_birth(dateOfBirth);
                 }
+                user.setDate_modified(LocalDateTime.now());
 
                 if (payload.containsKey("user_status")) {
                     Object userStatusIdObj = payload.get("user_status");
@@ -233,8 +231,6 @@ public class UserService {
                     }
                 }
 
-
-                user.setDate_modified(currentDateTime);
                 userRepository.save(user);
 
                 return new ResponseEntity<>(HttpStatus.OK);
@@ -281,8 +277,6 @@ public class UserService {
             return new ResponseEntity<>(responseBody, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-
 
 
     public ResponseEntity<Object> loginUser(Map<String, Object> payload) {
