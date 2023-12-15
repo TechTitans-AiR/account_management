@@ -26,4 +26,4 @@ RUN echo "MONGO_CLUSTER=${MONGO_CLUSTER}" >> src/main/resources/.env
 RUN mvn clean install
 
 # Pokreni aplikaciju
-CMD ["java", "-jar", "target/gcptest.jar"]
+CMD ["java", "-jar", "target/account_management.jar"]
