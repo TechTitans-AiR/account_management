@@ -67,8 +67,7 @@ public class UserService {
         UserRole userRole = userRoleRepository.findById(user.getUserRole()).orElse(null);
         UserStatus userStatus = userStatusRepository.findById(user.getUserStatus()).orElse(null);
 
-        String userRoleId = userRole != null ? userRole.getId().toString() : null;
-        String userStatusId = userStatus != null ? userStatus.getId().toString() : null;
+
         return new UserDto(
                 user.getId(),
                 user.getUsername(),
@@ -81,8 +80,8 @@ public class UserService {
                 user.getDate_of_birth(),
                 user.getDate_created(),
                 user.getDate_modified(),
-                userRoleId,
-                userStatusId
+                userRole,
+                userStatus
         );
     }
 
@@ -172,66 +171,73 @@ public class UserService {
 
     public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload) {
         try {
-
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
 
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
+                LocalDateTime currentDateTime = LocalDateTime.now();
 
+                if (isValidField(payload, "username")) {
+                    user.setUsername((String) payload.get("username"));
+                }
+                if (isValidField(payload, "email")) {
+                    user.setEmail((String) payload.get("email"));
+                }
+                if (isValidField(payload, "password")) {
+                    user.setPassword(hashPassword((String) payload.get("password")));
+                }
+                if (isValidField(payload, "first_name")) {
+                    user.setFirst_name((String) payload.get("first_name"));
+                }
+                if (isValidField(payload, "last_name")) {
+                    user.setLast_name((String) payload.get("last_name"));
+                }
+                if (isValidField(payload, "address")) {
+                    user.setAddress((String) payload.get("address"));
+                }
+                if (isValidField(payload, "phone")) {
+                    user.setPhone((String) payload.get("phone"));
+                }
+                if (isValidField(payload, "date_of_birth")) {
+                    String dateOfBirthString = (String) payload.get("date_of_birth");
+                    LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
+                    user.setDate_of_birth(dateOfBirth);
+                }
 
-                    LocalDateTime currentDateTime = LocalDateTime.now();
-
-                    if (isValidField(payload, "username")) {
-                        user.setUsername((String) payload.get("username"));
-                    }
-                    if (isValidField(payload, "email")) {
-                        user.setEmail((String) payload.get("email"));
-                    }
-                    if (isValidField(payload, "password")) {
-                        user.setPassword(hashPassword((String) payload.get("password")));
-                    }
-                    if (isValidField(payload, "first_name")) {
-                        user.setFirst_name((String) payload.get("first_name"));
-                    }
-                    if (isValidField(payload, "last_name")) {
-                        user.setLast_name((String) payload.get("last_name"));
-                    }
-                    if (isValidField(payload, "address")) {
-                        user.setAddress((String) payload.get("address"));
-                    }
-
-                    if (isValidField(payload, "phone")) {
-                        user.setPhone((String) payload.get("phone"));
-                    }
-                    if (isValidField(payload, "date_of_birth")) {
-                        String dateOfBirthString = (String) payload.get("date_of_birth");
-                        LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
-                        user.setDate_of_birth(dateOfBirth);
-                    }
                 if (payload.containsKey("user_status")) {
-                    String userStatusId = (String) payload.get("user_status");
-                    ObjectId userStatusObjectId = new ObjectId(userStatusId);
-                    user.setUserStatus(userStatusObjectId);
+                    Object userStatusIdObj = payload.get("user_status");
+                    String userStatusId;
+                    if (userStatusIdObj instanceof Map) {
+                        userStatusId = ((Map<String, String>) userStatusIdObj).get("$oid");
+                    } else {
+                        userStatusId = (String) userStatusIdObj;
+                    }
+                    UserStatus userStatus = userStatusRepository.findById(new ObjectId(userStatusId)).orElse(null);
+                    if (userStatus != null) {
+                        user.setUserStatus(new ObjectId(userStatus.getId().toString()));
+                    }
                 }
 
                 if (payload.containsKey("user_role")) {
-                    String userRoleId = (String) payload.get("user_role");
-                    ObjectId userRoleObjectId = new ObjectId(userRoleId);
-                    user.setUserRole(userRoleObjectId);
+                    Object userRoleIdObj = payload.get("user_role");
+                    String userRoleId;
+                    if (userRoleIdObj instanceof Map) {
+                        userRoleId = ((Map<String, String>) userRoleIdObj).get("$oid");
+                    } else {
+                        userRoleId = (String) userRoleIdObj;
+                    }
+                    UserRole userRole = userRoleRepository.findById(new ObjectId(userRoleId)).orElse(null);
+                    if (userRole != null) {
+                        user.setUserRole(new ObjectId(userRole.getId().toString()));
+                    }
                 }
 
 
-
                 user.setDate_modified(currentDateTime);
-                    user.setDate_created(user.getDate_created());
+                userRepository.save(user);
 
-
-
-                    userRepository.save(user);
-
-                    return new ResponseEntity<>("User updated successfully", HttpStatus.OK);
-
+                return new ResponseEntity<>(HttpStatus.OK);
             } else {
                 return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
             }
@@ -240,7 +246,6 @@ public class UserService {
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
 
     private boolean isValidField(Map<String, Object> payload, String field) {

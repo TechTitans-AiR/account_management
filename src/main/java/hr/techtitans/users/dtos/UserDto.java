@@ -34,7 +34,7 @@ public class UserDto {
     @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
     private LocalDateTime date_modified;
 
-    private String userRole;
+    private UserRole userRole;
 
-    private String userStatus;
+    private UserStatus userStatus;
 }
