@@ -7,5 +7,5 @@ steps:
       - '--build-arg=MONGO_PASSWORD=$_MONGO_PASSWORD'
       - '--build-arg=MONGO_CLUSTER=$_MONGO_CLUSTER'
       - '-t'
-      - 'gcr.io/techtitans-407214/gcptest'
+      - 'gcr.io/techtitans-407214/account_management'
       - '.'
