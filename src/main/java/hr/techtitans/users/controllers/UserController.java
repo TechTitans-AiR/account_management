@@ -41,20 +41,18 @@ public class UserController {
 
 
     @PostMapping("/create")
-    public ResponseEntity<Object> addUser(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Object> addUser(@RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
         try {
-            return new ResponseEntity<>(userService.addUser(payload), HttpStatus.CREATED);
-        } catch (UserService.UserCreationException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+            return userService.addUser(payload, token);
         } catch (Exception e) {
+            e.printStackTrace();
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
     @PutMapping("/update/{userId}")
-    public ResponseEntity<Object> updateUser(@PathVariable String userId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Object> updateUser(@PathVariable String userId, @RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
         try {
-            ResponseEntity<Object> response = userService.updateUser(userId, payload);
+            ResponseEntity<Object> response = userService.updateUser(userId, payload, token);
 
             if (response.getStatusCode() == HttpStatus.OK) {
                 UserDto updatedUserDto = userService.getUserById(userId);
@@ -70,10 +68,9 @@ public class UserController {
         }
     }
 
-
     @DeleteMapping("/delete/{userId}")
-    public ResponseEntity<Object> deleteUser(@PathVariable String userId) {
-        return userService.deleteUserById(userId);
+    public ResponseEntity<Object> deleteUser(@PathVariable String userId, @RequestHeader("Authorization") String token) {
+        return userService.deleteUserById(userId, token);
     }
 
     @DeleteMapping("/delete/")

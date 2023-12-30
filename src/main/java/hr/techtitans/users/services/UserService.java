@@ -8,6 +8,7 @@ import hr.techtitans.users.repositories.UserRepository;
 import hr.techtitans.users.repositories.UserRoleRepository;
 import hr.techtitans.users.repositories.UserStatusRepository;
 import hr.techtitans.users.utils.JWT;
+import org.bson.json.JsonObject;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import org.json.JSONObject;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+
 
 @Service
 public class UserService {
@@ -54,12 +60,12 @@ public class UserService {
     }
 
 
-    public List<UserDto> allUsers(){
+    public List<UserDto> allUsers() {
         List<User> users = userRepository.findAll();
         return users.stream().map(this::mapToUserDto).collect(Collectors.toList());
     }
 
-    private UserDto mapToUserDto(User user){
+    private UserDto mapToUserDto(User user) {
         UserRole userRole = userRoleRepository.findById(user.getUserRole()).orElse(null);
         UserStatus userStatus = userStatusRepository.findById(user.getUserStatus()).orElse(null);
 
@@ -82,6 +88,7 @@ public class UserService {
     }
 
     public UserDto getUserById(String userId) {
+
         ObjectId objectId = new ObjectId(userId);
         Optional<User> optionalUser = userRepository.findById(objectId);
 
@@ -93,14 +100,19 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<Object> addUser(Map<String,Object> payload) {
+    public ResponseEntity<Object> addUser(Map<String, Object> payload, String token) {
         try {
+
+            if (!isAdmin(token)) {
+                return new ResponseEntity<>("Only admin users can add new users", HttpStatus.UNAUTHORIZED);
+            }
+
             System.out.println("Sadržaj payload varijable:");
             payload.forEach((key, value) -> System.out.println(key + ": " + value));
             User user = new User();
             LocalDateTime currentDateTime = LocalDateTime.now();
 
-            String[] fieldsToCheck = {"username", "first_name", "last_name","email","password"};
+            String[] fieldsToCheck = {"username", "first_name", "last_name", "email", "password"};
             for (String field : fieldsToCheck) {
                 if (!isValidField(payload, field)) {
                     throw new UserCreationException(field + " not valid");
@@ -121,15 +133,15 @@ public class UserService {
             user.setEmail((String) payload.get("email"));
             user.setDate_created(currentDateTime);
             user.setDate_modified(currentDateTime);
-            if(isValid((String) payload.get("address"))) {
+            if (isValid((String) payload.get("address"))) {
                 user.setAddress((String) payload.get("address"));
             }
-            if(isValid((String) payload.get("phone"))){
+            if (isValid((String) payload.get("phone"))) {
                 user.setPhone((String) payload.get("phone"));
             }
-            user.setPassword(hashPassword ((String) payload.get("password")));
-            System.out.println("Password -> "+user.getPassword());
-            if(isValid((String) payload.get("date_of_birth"))){
+            user.setPassword(hashPassword((String) payload.get("password")));
+            System.out.println("Password -> " + user.getPassword());
+            if (isValid((String) payload.get("date_of_birth"))) {
                 String dateOfBirthString = (String) payload.get("date_of_birth");
                 LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
                 user.setDate_of_birth(dateOfBirth);
@@ -164,8 +176,30 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload) {
+    private boolean isAdmin(String token) {
         try {
+            String role = getRoleFromToken(token);
+            System.out.println("Role from Token in isAdmin: " + role);
+
+            if (role != null) {
+                return "admin".equalsIgnoreCase(role.trim());
+            } else {
+                System.out.println("Role from Token is null.");
+                return false;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload, String token) {
+        try {
+
+            if (!isAdmin(token)) {
+                return new ResponseEntity<>("Only admin users can update other users", HttpStatus.UNAUTHORIZED);
+            }
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
 
@@ -253,8 +287,12 @@ public class UserService {
     }
 
 
-    public ResponseEntity<Object> deleteUserById(String userId) {
+    public ResponseEntity<Object> deleteUserById(String userId, String token) {
         try {
+            if (!isAdmin(token)) {
+                return new ResponseEntity<>("Only admin can delete other users", HttpStatus.UNAUTHORIZED);
+            }
+
             if (userId == null || userId.isEmpty()) {
                 return new ResponseEntity<>(Map.of("message", "User ID not provided"), HttpStatus.BAD_REQUEST);
             }
@@ -284,28 +322,43 @@ public class UserService {
             if (!isValidField(payload, "username") || !isValidField(payload, "password")) {
                 return new ResponseEntity<>("Username and password are required", HttpStatus.BAD_REQUEST);
             }
-            System.out.println("UDE");
+
             String username = (String) payload.get("username");
             String password = (String) payload.get("password");
-            System.out.println("UDE"+username);
-            User user =  userRepository.findByUsername(username);
-            System.out.println("User -> "+user);
+
+            User user = userRepository.findByUsername(username);
+
             if (user == null) {
                 return new ResponseEntity<>("User not found", HttpStatus.NOT_FOUND);
             }
 
-            System.out.println("Provjera passworda -> "+checkPassword(password, user.getPassword()));
             if (!checkPassword(password, user.getPassword())) {
                 return new ResponseEntity<>("Incorrect password", HttpStatus.UNAUTHORIZED);
             }
+
             String roleName = userRoleRepository.getRoleNameById(user.getUserRole()).getName();
-            System.out.println("Role Name: " + roleName);
-            String token = generateJwtToken(username,roleName);
-            if(token != null){
-                System.out.println("TOKEN -> "+token);
-            }else{
+            System.out.println("User Role from Database: " + roleName);
+
+            String token = generateJwtToken(username, roleName);
+            if (token != null) {
+                System.out.println("TOKEN -> " + token);
+
+                String roleFromToken = getRoleFromToken(token);
+                System.out.println("User Role from Token: " + roleFromToken);
+
+                boolean isAdmin = "admin".equalsIgnoreCase(roleFromToken.trim());
+                System.out.println("User is an admin: " + isAdmin);
+
+                if (isAdmin) {
+                    System.out.println("User is an admin.");
+                } else {
+                    System.out.println("User is not an admin.");
+                }
+
+            } else {
                 return new ResponseEntity<>("Cannot create JWT", HttpStatus.INTERNAL_SERVER_ERROR);
             }
+
             return new ResponseEntity<>(Map.of("message", "Login successful", "token", token), HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
@@ -313,7 +366,7 @@ public class UserService {
         }
     }
 
-    public String generateJwtToken(String username, String userRole){
+    public String generateJwtToken(String username, String userRole) {
         return jwtUtils.generateToken(username, userRole);
     }
 
@@ -328,5 +381,34 @@ public class UserService {
         BCrypt.Verifyer verifyer = BCrypt.verifyer();
         BCrypt.Result result = verifyer.verify(plainTextPassword.toCharArray(), hashedPassword.toCharArray());
         return result.verified;
+    }
+
+    public String getRoleFromToken(String token) {
+        try {
+            String[] tokenParts = token.split("\\.");
+
+            if (tokenParts.length != 3) {
+                System.out.println("Invalid token format");
+                System.out.println(tokenParts.length);
+                return null;
+            }
+
+            String payload = tokenParts[1];
+
+            byte[] decodedPayload = java.util.Base64.getUrlDecoder().decode(payload);
+            String decodedPayloadString = new String(decodedPayload, StandardCharsets.UTF_8);
+
+            JSONObject payloadJson = new JSONObject(decodedPayloadString);
+
+            String role = payloadJson.getString("role");
+
+            System.out.println("Role from Token in getRoleFromToken: " + role);
+            System.out.println(payloadJson);
+
+            return role;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
