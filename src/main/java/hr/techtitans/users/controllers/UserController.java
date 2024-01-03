@@ -68,6 +68,25 @@ public class UserController {
         }
     }
 
+    @PutMapping("/userUpdate/{userId}")
+    public ResponseEntity<Object> updateUserInfo(@PathVariable String userId, @RequestBody Map<String, Object> payload) {
+        try {
+            ResponseEntity<Object> response = userService.updateUserInfo(userId, payload);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                UserDto updatedUserDto = userService.getUserById(userId);
+                return new ResponseEntity<>(updatedUserDto, HttpStatus.OK);
+            }
+
+            return response;
+        } catch (UserService.UserCreationException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @DeleteMapping("/delete/{userId}")
     public ResponseEntity<Object> deleteUser(@PathVariable String userId, @RequestHeader("Authorization") String token) {
         return userService.deleteUserById(userId, token);
