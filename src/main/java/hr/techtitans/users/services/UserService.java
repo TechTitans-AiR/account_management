@@ -277,8 +277,13 @@ public class UserService {
         }
     }
 
-    public ResponseEntity<Object> updateUserInfo(String userId, Map<String, Object> payload) {
+    public ResponseEntity<Object> updateUserInfo(String userId, Map<String, Object> payload, String token) {
         try {
+            System.out.println("ZZZZ user id ->"+ userId);
+            System.out.println("ZZZZ user id iz tokena"+getUserIdFromToken(token));
+            if (!userId.equals(getUserIdFromToken(token))) {
+                return new ResponseEntity<>("You can edit only your profile", HttpStatus.UNAUTHORIZED);
+            }
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
 
@@ -378,7 +383,7 @@ public class UserService {
             String roleName = userRoleRepository.getRoleNameById(user.getUserRole()).getName();
             System.out.println("User Role from Database: " + roleName);
 
-            String token = generateJwtToken(username, roleName);
+            String token = generateJwtToken(username, roleName, user.getId());
             if (token != null) {
                 System.out.println("TOKEN -> " + token);
 
@@ -405,8 +410,8 @@ public class UserService {
         }
     }
 
-    public String generateJwtToken(String username, String userRole) {
-        return jwtUtils.generateToken(username, userRole);
+    public String generateJwtToken(String username, String userRole, String userId) {
+        return jwtUtils.generateToken(username, userRole, userId);
     }
 
     public static String hashPassword(String plainTextPassword) {
@@ -445,6 +450,35 @@ public class UserService {
             System.out.println(payloadJson);
 
             return role;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public String getUserIdFromToken(String token) {
+        try {
+            String[] tokenParts = token.split("\\.");
+
+            if (tokenParts.length != 3) {
+                System.out.println("Invalid token format");
+                System.out.println(tokenParts.length);
+                return null;
+            }
+
+            String payload = tokenParts[1];
+
+            byte[] decodedPayload = java.util.Base64.getUrlDecoder().decode(payload);
+            String decodedPayloadString = new String(decodedPayload, StandardCharsets.UTF_8);
+
+            JSONObject payloadJson = new JSONObject(decodedPayloadString);
+
+            String userIdFromToken = payloadJson.getString("userId");
+
+            System.out.println("userIdFromToken from Token: " + userIdFromToken);
+            System.out.println(payloadJson);
+
+            return userIdFromToken;
         } catch (Exception e) {
             e.printStackTrace();
             return null;

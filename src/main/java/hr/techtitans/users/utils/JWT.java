@@ -11,13 +11,14 @@ import java.util.Map;
 
 @Component
 public class JWT {
-    public String generateToken(String username, String userRole) {
+    public String generateToken(String username, String userRole, String userId) {
         try {
             Map<String, Object> headerClaims = new HashMap<>();
             Map<String, Object> payloadClaims = new HashMap<>();
 
             payloadClaims.put("username", username);
             payloadClaims.put("role", userRole);
+            payloadClaims.put("userId", userId);
 
             //1 day
             Date expiresAt = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);

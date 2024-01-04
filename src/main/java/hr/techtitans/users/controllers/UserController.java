@@ -69,9 +69,9 @@ public class UserController {
     }
 
     @PutMapping("/userUpdate/{userId}")
-    public ResponseEntity<Object> updateUserInfo(@PathVariable String userId, @RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Object> updateUserInfo(@PathVariable String userId, @RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
         try {
-            ResponseEntity<Object> response = userService.updateUserInfo(userId, payload);
+            ResponseEntity<Object> response = userService.updateUserInfo(userId, payload, token);
 
             if (response.getStatusCode() == HttpStatus.OK) {
                 UserDto updatedUserDto = userService.getUserById(userId);
