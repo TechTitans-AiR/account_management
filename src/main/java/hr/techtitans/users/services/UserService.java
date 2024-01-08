@@ -11,18 +11,21 @@ import hr.techtitans.users.utils.JWT;
 import org.bson.json.JsonObject;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import java.util.List;
+
+import java.nio.file.AccessDeniedException;
+import java.util.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
+
 import org.json.JSONObject;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
@@ -60,9 +63,17 @@ public class UserService {
     }
 
 
-    public List<UserDto> allUsers() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(this::mapToUserDto).collect(Collectors.toList());
+    public List<UserDto> allUsers(String token) {
+        try {
+            if (!isAdmin(token)) {
+                throw new AccessDeniedException("Only admin users can access all users");
+            }
+            List<User> users = userRepository.findAll();
+            return users.stream().map(this::mapToUserDto).collect(Collectors.toList());
+        } catch (AccessDeniedException e) {
+            System.out.println("Access Denied: " + e.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Only admin users can access all users");
+        }
     }
 
     private UserDto mapToUserDto(User user) {
@@ -87,6 +98,7 @@ public class UserService {
         );
     }
 
+
     public UserDto getUserById(String userId) {
 
         ObjectId objectId = new ObjectId(userId);
@@ -99,6 +111,25 @@ public class UserService {
             return null;
         }
     }
+
+    public UserDto getUserById1(String userId, String token) throws AccessDeniedException {
+        if (isAdmin(token)) {
+            ObjectId objectId = new ObjectId(userId);
+            Optional<User> optionalUser = userRepository.findById(objectId);
+
+            if (optionalUser.isPresent()) {
+                User user = optionalUser.get();
+                return mapToUserDto(user);
+            } else {
+                return null;
+            }
+        } else {
+
+            throw new AccessDeniedException("Only admins can retrieve user information.");
+        }
+    }
+
+
 
     public ResponseEntity<Object> addUser(Map<String, Object> payload, String token) {
         try {

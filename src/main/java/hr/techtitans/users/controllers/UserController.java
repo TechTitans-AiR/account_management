@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Map;
 
@@ -18,14 +20,15 @@ public class UserController {
     private UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserDto>> getAllUsers() {
-        return new ResponseEntity<List<UserDto>>(userService.allUsers(), HttpStatus.OK);
+    public ResponseEntity<List<UserDto>> getAllUsers(@RequestHeader("Authorization") String token) {
+        return new ResponseEntity<List<UserDto>>(userService.allUsers(token), HttpStatus.OK);
     }
 
+
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable String userId) {
+    public ResponseEntity<?> getUserById(@PathVariable String userId, @RequestHeader("Authorization") String token) {
         try {
-            UserDto userDto = userService.getUserById(userId);
+            UserDto userDto = userService.getUserById1(userId, token);
 
             if (userDto != null) {
                 return new ResponseEntity<>(userDto, HttpStatus.OK);
@@ -33,8 +36,9 @@ public class UserController {
                 String errorMessage = "User with id: " + userId + " is not found.";
                 return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
             }
+        } catch (AccessDeniedException ex) {
+            return new ResponseEntity<>("Access denied. Only admins can retrieve user information.", HttpStatus.FORBIDDEN);
         } catch (Exception ex) {
-
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -49,6 +53,8 @@ public class UserController {
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
     @PutMapping("/update/{userId}")
     public ResponseEntity<Object> updateUser(@PathVariable String userId, @RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
         try {
