@@ -113,7 +113,10 @@ public class UserService {
     }
 
     public UserDto getUserById1(String userId, String token) throws AccessDeniedException {
-        if (isAdmin(token)) {
+        String role = getRoleFromToken(token);
+        String userIdFromToken = getUserIdFromToken(token);
+
+        if ("admin".equalsIgnoreCase(role)) {
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
 
@@ -123,13 +126,24 @@ public class UserService {
             } else {
                 return null;
             }
-        } else {
+        } else if ("merchant".equalsIgnoreCase(role)) {
+            if (userId.equals(userIdFromToken)) {
+                ObjectId objectId = new ObjectId(userId);
+                Optional<User> optionalUser = userRepository.findById(objectId);
 
-            throw new AccessDeniedException("Only admins can retrieve user information.");
+                if (optionalUser.isPresent()) {
+                    User user = optionalUser.get();
+                    return mapToUserDto(user);
+                } else {
+                    return null;
+                }
+            } else {
+                throw new AccessDeniedException("Merchants can only retrieve their own information.");
+            }
+        } else {
+            throw new AccessDeniedException("Access denied. Only admins and merchants can retrieve user information.");
         }
     }
-
-
 
     public ResponseEntity<Object> addUser(Map<String, Object> payload, String token) {
         try {

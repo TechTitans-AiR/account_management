@@ -37,12 +37,15 @@ public class UserController {
                 return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
             }
         } catch (AccessDeniedException ex) {
-            return new ResponseEntity<>("Access denied. Only admins can retrieve user information.", HttpStatus.FORBIDDEN);
+            if (ex.getMessage().contains("Merchants can only retrieve their own information.")) {
+                return new ResponseEntity<>("Access denied. Merchants can only retrieve their own information.", HttpStatus.FORBIDDEN);
+            } else {
+                return new ResponseEntity<>("Access denied. Only admins can retrieve user information.", HttpStatus.FORBIDDEN);
+            }
         } catch (Exception ex) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 
     @PostMapping("/create")
     public ResponseEntity<Object> addUser(@RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
