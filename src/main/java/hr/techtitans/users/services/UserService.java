@@ -112,38 +112,39 @@ public class UserService {
         }
     }
 
-    public UserDto getUserById1(String userId, String token) throws AccessDeniedException {
-        String role = getRoleFromToken(token);
-        String userIdFromToken = getUserIdFromToken(token);
-
-        if ("admin".equalsIgnoreCase(role)) {
-            ObjectId objectId = new ObjectId(userId);
-            Optional<User> optionalUser = userRepository.findById(objectId);
-
-            if (optionalUser.isPresent()) {
-                User user = optionalUser.get();
-                return mapToUserDto(user);
-            } else {
-                return null;
+    public ResponseEntity<Object> checkUserRole(String token) {
+        try {
+            String role = getRoleFromToken(token);
+            if (role == null) {
+                return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
             }
-        } else if ("merchant".equalsIgnoreCase(role)) {
-            if (userId.equals(userIdFromToken)) {
-                ObjectId objectId = new ObjectId(userId);
-                Optional<User> optionalUser = userRepository.findById(objectId);
-
-                if (optionalUser.isPresent()) {
-                    User user = optionalUser.get();
-                    return mapToUserDto(user);
-                } else {
-                    return null;
-                }
-            } else {
-                throw new AccessDeniedException("Merchants can only retrieve their own information.");
-            }
-        } else {
-            throw new AccessDeniedException("Access denied. Only admins and merchants can retrieve user information.");
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("An error occurred while checking user role", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    public UserDto getUserById1(String userId, String token){
+        ResponseEntity<Object> userRoleCheckResult = checkUserRole(token);
+        if (userRoleCheckResult != null) {
+            System.out.println("Unauthorized: " + userRoleCheckResult.getBody());
+            return null;
+        }
+
+
+        ObjectId objectId = new ObjectId(userId);
+        Optional<User> optionalUser = userRepository.findById(objectId);
+
+        if (optionalUser.isPresent()) {
+            User user = optionalUser.get();
+            return mapToUserDto(user);
+        } else {
+            return null;
+        }
+
+    }
+
 
     public ResponseEntity<Object> addUser(Map<String, Object> payload, String token) {
         try {

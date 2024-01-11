@@ -24,7 +24,7 @@ public class UserController {
         return new ResponseEntity<List<UserDto>>(userService.allUsers(token), HttpStatus.OK);
     }
 
-
+/*
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUserById(@PathVariable String userId, @RequestHeader("Authorization") String token) {
         try {
@@ -46,7 +46,27 @@ public class UserController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+*/
+@GetMapping("/{userId}")
+public ResponseEntity<?> getUserById(@PathVariable String userId, @RequestHeader("Authorization") String token){
+    try {
+        ResponseEntity<Object> userCheckResult = userService.checkUserRole(token);
+        if (userCheckResult != null) {
+            return userCheckResult;
+        }
+        UserDto userDto = userService.getUserById1(userId, token);
 
+        if (userDto != null) {
+            return new ResponseEntity<>(userDto, HttpStatus.OK);
+        } else {
+            String errorMessage = "User with id: " + userId + " is not found.";
+            return new ResponseEntity<>(errorMessage, HttpStatus.NOT_FOUND);
+        }
+    } catch (Exception ex) {
+
+        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
     @PostMapping("/create")
     public ResponseEntity<Object> addUser(@RequestBody Map<String, Object> payload, @RequestHeader("Authorization") String token) {
         try {
