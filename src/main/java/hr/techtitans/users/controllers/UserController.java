@@ -140,4 +140,21 @@ public ResponseEntity<?> getUserById(@PathVariable String userId, @RequestHeader
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @PostMapping("/login/pin")
+    public ResponseEntity<Object> loginPin(@RequestBody Map<String, Object> payload) {
+        try {
+            System.out.println("Received payload:");
+            payload.forEach((key, value) -> System.out.println(key + ": " + value));
+
+            ResponseEntity<Object> loginResponse = userService.loginUserPin(payload);
+            HttpStatus statusCode = (HttpStatus) loginResponse.getStatusCode();
+            return new ResponseEntity<>(loginResponse.getBody(), statusCode);
+        } catch (UserService.UserCreationException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
+            return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }
