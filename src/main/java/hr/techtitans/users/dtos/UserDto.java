@@ -22,6 +22,7 @@ public class UserDto {
     private String id;
     private String username;
     private String password;
+    private String pin;
     private String first_name;
     private String last_name;
     private String email;

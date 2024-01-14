@@ -50,6 +50,8 @@ public class UserService {
     }
 
 
+
+
     public class UserCreationException extends RuntimeException {
         public UserCreationException(String message) {
             super(message);
@@ -85,6 +87,7 @@ public class UserService {
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
+                user.getPin(),
                 user.getFirst_name(),
                 user.getLast_name(),
                 user.getEmail(),
@@ -158,7 +161,7 @@ public class UserService {
             User user = new User();
             LocalDateTime currentDateTime = LocalDateTime.now();
 
-            String[] fieldsToCheck = {"username", "first_name", "last_name", "email", "password"};
+            String[] fieldsToCheck = {"username", "first_name", "last_name", "email", "password","pin"};
             for (String field : fieldsToCheck) {
                 if (!isValidField(payload, field)) {
                     throw new UserCreationException(field + " not valid");
@@ -171,6 +174,9 @@ public class UserService {
 
             if (userRepository.findByEmail((String) payload.get("email")) != null) {
                 throw new UserCreationException("Email already exists");
+            }
+            if (userRepository.findByPin((String) payload.get("pin")) != null) {
+                throw new UserCreationException("PIN already exists");
             }
 
             user.setUsername((String) payload.get("username"));
@@ -187,6 +193,7 @@ public class UserService {
             }
             user.setPassword(hashPassword((String) payload.get("password")));
             System.out.println("Password -> " + user.getPassword());
+            user.setPin(hashPin((String) payload.get("pin")));
             if (isValid((String) payload.get("date_of_birth"))) {
                 String dateOfBirthString = (String) payload.get("date_of_birth");
                 LocalDate dateOfBirth = LocalDate.parse(dateOfBirthString);
@@ -261,6 +268,9 @@ public class UserService {
                 }
                 if (isValidField(payload, "password")) {
                     user.setPassword(hashPassword((String) payload.get("password")));
+                }
+                if (isValidField(payload, "pin")) {
+                    user.setPin(hashPin((String) payload.get("pin")));
                 }
                 if (isValidField(payload, "first_name")) {
                     user.setFirst_name((String) payload.get("first_name"));
@@ -456,6 +466,57 @@ public class UserService {
         }
     }
 
+    public ResponseEntity<Object> loginUserPin(Map<String, Object> payload) {
+        try {
+            if (!isValidField(payload, "pin")) {
+                return new ResponseEntity<>("PIN is required", HttpStatus.BAD_REQUEST);
+            }
+
+            String pin = (String) payload.get("pin");
+
+
+            List<User> usersWithPin = userRepository.findByPinIsNotNull();
+
+
+            for (User user : usersWithPin) {
+                String hashedPinFromDatabase = user.getPin();
+
+                if (checkPin(pin, hashedPinFromDatabase)) {
+                    String roleName = userRoleRepository.getRoleNameById(user.getUserRole()).getName();
+                    System.out.println("User Role from Database: " + roleName);
+
+                    String token = generateJwtToken(user.getUsername(), roleName, user.getId());
+                    if (token != null) {
+                        System.out.println("TOKEN -> " + token);
+
+                        String roleFromToken = getRoleFromToken(token);
+                        System.out.println("User Role from Token: " + roleFromToken);
+
+                        boolean isAdmin = "admin".equalsIgnoreCase(roleFromToken.trim());
+                        System.out.println("User is an admin: " + isAdmin);
+
+                        if (isAdmin) {
+                            System.out.println("User is an admin.");
+                        } else {
+                            System.out.println("User is not an admin.");
+                        }
+
+                        return new ResponseEntity<>(Map.of("message", "Login successful", "token", token), HttpStatus.OK);
+                    } else {
+                        return new ResponseEntity<>("Cannot create JWT", HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
+                }
+            }
+
+
+            return new ResponseEntity<>("Incorrect PIN", HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
     public String generateJwtToken(String username, String userRole, String userId) {
         return jwtUtils.generateToken(username, userRole, userId);
     }
@@ -467,11 +528,28 @@ public class UserService {
         return new String(hashedPasswordChars);
     }
 
+    public String hashPin(String pin) {
+        String pinAsString = String.valueOf(pin);
+        BCrypt.Hasher hasher = BCrypt.withDefaults();
+        int cost = 12;
+        char[] hashedPinChars = hasher.hashToChar(cost, pinAsString.toCharArray());
+        return new String(hashedPinChars);
+    }
+
+
+
+
     public static boolean checkPassword(String plainTextPassword, String hashedPassword) {
         BCrypt.Verifyer verifyer = BCrypt.verifyer();
         BCrypt.Result result = verifyer.verify(plainTextPassword.toCharArray(), hashedPassword.toCharArray());
         return result.verified;
     }
+    public static boolean checkPin(String plainTextPin, String hashedPin) {
+        BCrypt.Verifyer verifyer = BCrypt.verifyer();
+        BCrypt.Result result = verifyer.verify(plainTextPin.toCharArray(), hashedPin.toCharArray());
+        return result.verified;
+    }
+
 
     public String getRoleFromToken(String token) {
         try {

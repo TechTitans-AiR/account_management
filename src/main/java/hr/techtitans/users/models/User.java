@@ -32,6 +32,8 @@ public class User {
 
     private String password;
 
+    private String pin;
+
     private String first_name;
 
     private String last_name;
