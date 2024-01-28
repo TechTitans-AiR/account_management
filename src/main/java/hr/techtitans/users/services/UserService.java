@@ -175,8 +175,15 @@ public class UserService {
             if (userRepository.findByEmail((String) payload.get("email")) != null) {
                 throw new UserCreationException("Email already exists");
             }
-            if (userRepository.findByPin((String) payload.get("pin")) != null) {
-                throw new UserCreationException("PIN already exists");
+            List<User> usersWithPin = userRepository.findByPinIsNotNull();
+            String pin=(String) payload.get("pin");
+
+            for (User user1 : usersWithPin) {
+                String hashedPinFromDatabase = user1.getPin();
+
+                if (checkPin(pin, hashedPinFromDatabase)){
+                    throw new UserCreationException("PIN already exists");
+                }
             }
 
             user.setUsername((String) payload.get("username"));
@@ -256,6 +263,16 @@ public class UserService {
             }
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
+            List<User> usersWithPin = userRepository.findByPinIsNotNull();
+            String pin=(String) payload.get("pin");
+
+            for (User user : usersWithPin) {
+                String hashedPinFromDatabase = user.getPin();
+
+                if (checkPin(pin, hashedPinFromDatabase)){
+                    return new ResponseEntity<>("PIN already exists", HttpStatus.BAD_REQUEST);
+                }
+            }
 
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
@@ -280,6 +297,7 @@ public class UserService {
                     user.setPassword(hashPassword((String) payload.get("password")));
                 }
                 //TODO: TIN
+
                 if (isValidField(payload, "pin")) {
                     user.setPin(hashPin((String) payload.get("pin")));
                 }
