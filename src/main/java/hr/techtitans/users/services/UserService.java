@@ -175,15 +175,8 @@ public class UserService {
             if (userRepository.findByEmail((String) payload.get("email")) != null) {
                 throw new UserCreationException("Email already exists");
             }
-            List<User> usersWithPin = userRepository.findByPinIsNotNull();
-            String pin=(String) payload.get("pin");
-
-            for (User user1 : usersWithPin) {
-                String hashedPinFromDatabase = user1.getPin();
-
-                if (checkPin(pin, hashedPinFromDatabase)){
-                    throw new UserCreationException("PIN already exists");
-                }
+            if (userRepository.findByPin((String) payload.get("pin")) != null) {
+                throw new UserCreationException("PIN already exists");
             }
 
             user.setUsername((String) payload.get("username"));
@@ -255,7 +248,6 @@ public class UserService {
 
 
     public ResponseEntity<Object> updateUser(String userId, Map<String, Object> payload, String token) {
-        System.out.println("Dobijem payload ->"+payload);
         try {
 
             if (!isAdmin(token)) {
@@ -263,41 +255,20 @@ public class UserService {
             }
             ObjectId objectId = new ObjectId(userId);
             Optional<User> optionalUser = userRepository.findById(objectId);
-            List<User> usersWithPin = userRepository.findByPinIsNotNull();
-            String pin=(String) payload.get("pin");
-
-            for (User user : usersWithPin) {
-                String hashedPinFromDatabase = user.getPin();
-
-                if (checkPin(pin, hashedPinFromDatabase)){
-                    return new ResponseEntity<>("PIN already exists", HttpStatus.BAD_REQUEST);
-                }
-            }
 
             if (optionalUser.isPresent()) {
                 User user = optionalUser.get();
                 LocalDateTime currentDateTime = LocalDateTime.now();
 
                 if (isValidField(payload, "username")) {
-                    if(userRepository.findByUsername((String) payload.get("username")) != null){
-                        return new ResponseEntity<>("Username already exists", HttpStatus.BAD_REQUEST);
-                    }else{
                     user.setUsername((String) payload.get("username"));
-                    }
-
                 }
                 if (isValidField(payload, "email")) {
-                    if(userRepository.findByEmail((String) payload.get("email")) != null){
-                        return new ResponseEntity<>("Email already exists", HttpStatus.BAD_REQUEST);
-                    }else{
-                        user.setEmail((String) payload.get("email"));
-                    }
+                    user.setEmail((String) payload.get("email"));
                 }
                 if (isValidField(payload, "password")) {
                     user.setPassword(hashPassword((String) payload.get("password")));
                 }
-                //TODO: TIN
-
                 if (isValidField(payload, "pin")) {
                     user.setPin(hashPin((String) payload.get("pin")));
                 }
@@ -322,27 +293,34 @@ public class UserService {
                 }
                 user.setDate_modified(LocalDateTime.now());
 
-                if (payload.containsKey("user_status") && isValidField(payload, "user_status")) {
-                    UserStatus userStatus = userStatusRepository.findByName((String) payload.get("user_status"));
-                    if(userStatus != null) {
-                    ObjectId userStatusIdObj = userStatus.getId();
-                    user.setUserStatus(userStatusIdObj);
-                    }else{
-                        return new ResponseEntity<>("User status not found", HttpStatus.NOT_FOUND);
+                if (payload.containsKey("user_status")) {
+                    Object userStatusIdObj = payload.get("user_status");
+                    String userStatusId;
+                    if (userStatusIdObj instanceof Map) {
+                        userStatusId = ((Map<String, String>) userStatusIdObj).get("$oid");
+                    } else {
+                        userStatusId = (String) userStatusIdObj;
+                    }
+                    UserStatus userStatus = userStatusRepository.findById(new ObjectId(userStatusId)).orElse(null);
+                    if (userStatus != null) {
+                        user.setUserStatus(new ObjectId(userStatus.getId().toString()));
                     }
                 }
 
-                if (payload.containsKey("user_role") && isValidField(payload, "user_role")) {
-                    UserRole userRole = userRoleRepository.findByName((String) payload.get("user_role"));
-                    if(userRole != null) {
-                        ObjectId userRoleIdObj = userRole.getId();
-                        user.setUserRole(userRoleIdObj);
-                    }else{
-                        return new ResponseEntity<>("User role not found", HttpStatus.NOT_FOUND);
+                if (payload.containsKey("user_role")) {
+                    Object userRoleIdObj = payload.get("user_role");
+                    String userRoleId;
+                    if (userRoleIdObj instanceof Map) {
+                        userRoleId = ((Map<String, String>) userRoleIdObj).get("$oid");
+                    } else {
+                        userRoleId = (String) userRoleIdObj;
+                    }
+                    UserRole userRole = userRoleRepository.findById(new ObjectId(userRoleId)).orElse(null);
+                    if (userRole != null) {
+                        user.setUserRole(new ObjectId(userRole.getId().toString()));
                     }
                 }
 
-                System.out.println("Zapisujem ->"+user);
                 userRepository.save(user);
 
                 return new ResponseEntity<>(HttpStatus.OK);
@@ -351,8 +329,6 @@ public class UserService {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("e"+e);
-            System.out.println("e.print"+ e.getMessage());
             return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -546,7 +522,6 @@ public class UserService {
     }
 
     public static String hashPassword(String plainTextPassword) {
-        System.out.println("Password koji se hashira ->"+plainTextPassword);
         BCrypt.Hasher hasher = BCrypt.withDefaults();
         int cost = 12;
         char[] hashedPasswordChars = hasher.hashToChar(cost, plainTextPassword.toCharArray());
@@ -554,7 +529,6 @@ public class UserService {
     }
 
     public String hashPin(String pin) {
-        System.out.println("Pin koji hashiram ->"+pin);
         String pinAsString = String.valueOf(pin);
         BCrypt.Hasher hasher = BCrypt.withDefaults();
         int cost = 12;
